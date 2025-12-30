@@ -100,54 +100,6 @@ def clone_repository(
     return Repository._from_c(crepo[0], owned=True)
 
 
-def fetch(
-    self, refspecs=None, message=None, callbacks=None, prune=0, proxy=None, depth=0
-):
-    """Perform a fetch against this remote. Returns a <TransferProgress>
-    object.
-    Modified version of the pygit2 fetch function that allows for shallow clones
-
-    Parameters:
-
-    prune : enum
-        Either <GIT_FETCH_PRUNE_UNSPECIFIED>, <GIT_FETCH_PRUNE>, or
-        <GIT_FETCH_NO_PRUNE>. The first uses the configuration from the
-        repo, the second will remove any remote branch in the local
-        repository that does not exist in the remote and the last will
-        always keep the remote branches
-
-    proxy : None or True or str
-        Proxy configuration. Can be one of:
-
-        * `None` (the default) to disable proxy usage
-        * `True` to enable automatic proxy detection
-        * an url to a proxy (`http://proxy.example.org:3128/`)
-
-    depth : int
-        Depth to clone.
-
-        If greater than zero, the clone will be a shallow clone.
-        Defaults to 0 (unshallow).
-    """
-    if not PYGIT2_EXISTS:
-        raise Exception("pygit2 not found, please install pygit2 and try again")
-    from pygit2 import git_fetch_options
-    from pygit2.ffi import C
-    from pygit2.remote import TransferProgress
-    from pygit2.utils import StrArray, to_bytes
-
-    with git_fetch_options(callbacks) as payload:
-        opts = payload.fetch_options
-        opts.prune = prune
-        opts.depth = depth
-        # self.__set_proxy(opts.proxy_opts, proxy) -- not implemented
-        with StrArray(refspecs) as arr:
-            err = C.git_remote_fetch(self._remote, arr, opts, to_bytes(message))
-            payload.check_error(err)
-
-    return TransferProgress(C.git_remote_stats(self._remote))
-
-
 def git_init(target: Path, url: str):
     if PYGIT2_EXISTS:
         repo = pygit2.init_repository(str(target), bare=False)
@@ -167,7 +119,7 @@ def git_pull(target: Path, baseline_commit: Optional[str] = None):
                 "git repo not found, please remove the directory and try again"
             )
         refspecs = [baseline_commit] if baseline_commit else None
-        fetch(repo.remotes["origin"], refspecs=refspecs, depth=1)
+        repo.remotes["origin"].fetch(refspecs=refspecs, depth=1)
         fetch_head_ref = repo.lookup_reference("FETCH_HEAD")
         repo.checkout(fetch_head_ref)
     else:
@@ -242,7 +194,7 @@ def install_vcpkg(build_temp: Path, baseline_commit: str) -> Path:
                 vcpkg_root, "https://github.com/microsoft/vcpkg.git", baseline_commit
             )
         if sys.platform.startswith("win32"):
-            subprocess.run(["bootstrap-vcpkg.bat"], cwd=vcpkg_root, check=True)
+            subprocess.run([".\\bootstrap-vcpkg.bat"], cwd=vcpkg_root, shell=True, check=True)
         else:
             subprocess.run(["./bootstrap-vcpkg.sh"], cwd=vcpkg_root, check=True)
         # Set vcpkg root
