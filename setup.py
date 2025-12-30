@@ -182,7 +182,10 @@ class CMakeBuild(build_ext):
             )
         vcpkg_root = Path(os.environ.get("VCPKG_ROOT") or "")
         toolchain_file = vcpkg_root / "scripts" / "buildsystems" / "vcpkg.cmake"
+        print(f"Toolchain file: {toolchain_file!s}")
         cmake_args += [f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file!s}"]
+        cmake_args += [f"-DVCPKG_ROOT={vcpkg_root!s}"]
+        cmake_args += [f"-DZ_VCPKG_ROOT_DIR={vcpkg_root!s}"]
         cmake_args += ["-DVCPKG_INSTALL_OPTIONS=--clean-after-build"]
         # set pybind11_DIR
         cmake_args += [f"-Dpybind11_DIR={get_cmake_dir()}"]
@@ -279,19 +282,23 @@ class CMakeBuild(build_ext):
                 check=True,
             )
         else:
-            cmake_args += [f"-DVCPKG_TARGET_TRIPLET={target_triplet}"]
-            subprocess.run(
-                ["cmake", ext.sourcedir, *cmake_args],
-                env=os.environ,
-                cwd=build_temp,
-                check=True,
-            )
-            subprocess.run(
-                ["cmake", "--build", ".", *build_args],
-                env=os.environ,
-                cwd=build_temp,
-                check=True,
-            )
+            try:
+                cmake_args += [f"-DVCPKG_TARGET_TRIPLET={target_triplet}"]
+                subprocess.run(
+                    ["cmake", ext.sourcedir, *cmake_args],
+                    env=os.environ,
+                    cwd=build_temp,
+                    check=True,
+                )
+                subprocess.run(
+                    ["cmake", "--build", ".", *build_args],
+                    env=os.environ,
+                    cwd=build_temp,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"Error building {ext.name}: {e}")
+                raise e
 
         if self.inplace:
             # copy the library to the source directory

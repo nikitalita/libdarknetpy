@@ -175,7 +175,8 @@ def get_baseline_from_vcpkgjson(vcpkg_json_path: Path) -> str:
 def install_vcpkg(build_temp: Path, baseline_commit: str) -> Path:
     try:
         os.environ["VCPKG_DISABLE_METRICS"] = "true"
-        vcpkg_root = build_temp / "vcpkg"
+        vcpkg_root = build_temp / ".."/ ".." / ".." / "vcpkg"
+        vcpkg_root = vcpkg_root.resolve()
         vcpkg_exists = False
         if not check_git():
             raise Exception("git not found, please install git and try again")
